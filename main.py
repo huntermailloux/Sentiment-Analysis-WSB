@@ -1,8 +1,7 @@
 import os
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from motor.motor_asyncio import AsyncIOMotorClient
-from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,46 +10,36 @@ MONGO_URI = os.getenv("MONGODB_URI")
 DB_NAME = "sentiment-analysis"
 COLLECTION_NAME = "posts"
 
-# Lifespan function to manage database connection
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Connecting to MongoDB...")
-    client = AsyncIOMotorClient(MONGO_URI)  # Create MongoDB client
-    db = client[DB_NAME]  # Get database instance
-    app.state.db = db  # Store database in FastAPI state
-    yield  # Run the app
-    print("Closing MongoDB connection...")
-    client.close()
+app = FastAPI()
 
-app = FastAPI(lifespan=lifespan)
+# Explicitly create a global MongoDB client
+client = AsyncIOMotorClient(MONGO_URI) if MONGO_URI else None
+db = client[DB_NAME] if client else None
+
+@app.middleware("http")
+async def db_middleware(request: Request, call_next):
+    """Ensure that every request has access to the MongoDB database."""
+    if not db:
+        raise HTTPException(status_code=500, detail="Database connection not initialized")
+    
+    request.state.db = db  # Attach DB to the request state
+    response = await call_next(request)
+    return response
 
 @app.get("/")
-async def root():
+async def root(request: Request):
     try:
-        # Ensure app.state.db exists before using it
-        if not hasattr(app.state, "db"):
-            raise HTTPException(status_code=500, detail="Database connection not initialized")
-
-        db = app.state.db  # Retrieve database instance
+        db = request.state.db
         cursor = db[COLLECTION_NAME].find({})
         posts = await cursor.to_list(length=None)
-
-        if not posts:
-            return {"message": "No posts found"}
-
-        return {"posts": posts}
-
+        return {"posts": posts if posts else "No posts found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/ticker/{stock_ticker}")
-async def get_ticker_posts(stock_ticker: str):
+async def get_ticker_posts(stock_ticker: str, request: Request):
     try:
-        # Ensure app.state.db exists before using it
-        if not hasattr(app.state, "db"):
-            raise HTTPException(status_code=500, detail="Database connection not initialized")
-
-        db = app.state.db  # Retrieve database instance
+        db = request.state.db
         cursor = db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
         posts = await cursor.to_list(length=None)
 
@@ -58,7 +47,6 @@ async def get_ticker_posts(stock_ticker: str):
             raise HTTPException(status_code=404, detail=f"No posts found for ticker {stock_ticker.upper()}")
 
         return {"ticker": stock_ticker.upper(), "posts": posts}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
