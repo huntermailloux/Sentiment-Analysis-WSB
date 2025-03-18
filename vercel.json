@@ -9,6 +9,6 @@
     ],
     "env": {
       "APP_MODULE": "main:app",
-      "MONGO_URI": "@mongo_uri"
+      "MONGODB_URI": "@MONGODB_URI"
     }
   }
