@@ -1,6 +1,5 @@
 import os
 import uvicorn
-from fastapi import FastAPI
 from fastapi import FastAPI, HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
@@ -18,13 +17,23 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from FastAPI!"}
+    try:
+        cursor = collection.find({})  # Find all documents
+        posts = await cursor.to_list(length=None)  # Convert cursor to list
+
+        if not posts:
+            return {"message": "No posts found"}
+
+        return {"posts": posts}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/ticker/{stock_ticker}")
 async def get_ticker_posts(stock_ticker: str):
     try:
         # Fetch posts where "ticker" matches the stock_ticker from the URL
-        cursor = collection.find({"ticker": stock_ticker.upper()})  # Ensure case insensitivity
+        cursor = collection.find({"ticker": {"$in": stock_ticker.upper()}})  # Ensure case insensitivity
         posts = await cursor.to_list(length=None)  # Convert cursor to list
         
         if not posts:
