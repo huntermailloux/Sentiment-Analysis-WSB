@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGODB_URI")
+# MONGO_URI = os.getenv("MONGODB_URI")
+MONGO_URI = 'mongodb+srv://admin:admin@sentiment-analysis.myhee.mongodb.net/sentiment-analysis?retryWrites=true&w=majority'
 DB_NAME = "sentiment-analysis"
 COLLECTION_NAME = "posts"
 
