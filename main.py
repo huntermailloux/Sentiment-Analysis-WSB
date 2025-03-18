@@ -11,23 +11,24 @@ MONGO_URI = os.getenv("MONGODB_URI")
 DB_NAME = "sentiment-analysis"
 COLLECTION_NAME = "posts"
 
-# Lifespan function for handling MongoDB connection
+# Lifespan function to manage database connection
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Connecting to MongoDB...")
-    app.state.mongodb_client = AsyncIOMotorClient(MONGO_URI)  # Store client in state
-    app.state.db = app.state.mongodb_client[DB_NAME]  # Store database in state
-    yield  # Let the app run
+    client = AsyncIOMotorClient(MONGO_URI)  # Create MongoDB client
+    app.state.db = client[DB_NAME]  # Store database in FastAPI state
+    yield  # Run the app
     print("Closing MongoDB connection...")
-    app.state.mongodb_client.close()
+    client.close()
 
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def root():
     try:
-        cursor = app.state.db[COLLECTION_NAME].find({})  # Access DB from state
-        posts = await cursor.to_list(length=None)  
+        db = app.state.db  # Retrieve database instance from app.state
+        cursor = db[COLLECTION_NAME].find({})
+        posts = await cursor.to_list(length=None)
 
         if not posts:
             return {"message": "No posts found"}
@@ -40,7 +41,8 @@ async def root():
 @app.get("/ticker/{stock_ticker}")
 async def get_ticker_posts(stock_ticker: str):
     try:
-        cursor = app.state.db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
+        db = app.state.db  # Retrieve database instance
+        cursor = db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
         posts = await cursor.to_list(length=None)
 
         if not posts:
