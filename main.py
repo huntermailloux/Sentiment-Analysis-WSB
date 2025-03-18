@@ -33,7 +33,7 @@ async def root():
 async def get_ticker_posts(stock_ticker: str):
     try:
         # Fetch posts where "ticker" matches the stock_ticker from the URL
-        cursor = collection.find({"ticker": {"$in": stock_ticker.upper()}})  # Ensure case insensitivity
+        cursor = collection.find({"ticker": {"$in": [stock_ticker.upper()]}})  # Ensure case insensitivity
         posts = await cursor.to_list(length=None)  # Convert cursor to list
         
         if not posts:
