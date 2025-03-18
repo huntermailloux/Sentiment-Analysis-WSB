@@ -53,13 +53,10 @@ async def get_ticker_posts(stock_ticker: str, request: Request):
         cursor = db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
         posts = await cursor.to_list(length=None)  # ✅ Await the cursor
 
-        if not posts:
-            raise HTTPException(status_code=404, detail=f"No posts found for ticker {stock_ticker.upper()}")
-
         # Convert ObjectId to string in all documents
         posts = [serialize_document(post) for post in posts]
 
-        return {"ticker": stock_ticker.upper(), "posts": posts}
+        return {"ticker": stock_ticker.upper(), "posts": posts if posts else "No posts found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
