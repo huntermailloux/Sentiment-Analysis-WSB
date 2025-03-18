@@ -29,6 +29,7 @@ async def db_middleware(request: Request, call_next):
 @app.get("/")
 async def root(request: Request):
     try:
+        return {"uri": MONGO_URI}
         db = request.state.db
         cursor = db[COLLECTION_NAME].find({})
         posts = await cursor.to_list(length=None)
