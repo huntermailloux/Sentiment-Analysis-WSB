@@ -8,7 +8,6 @@
       { "src": "/(.*)", "dest": "/main.py" }
     ],
     "env": {
-      "APP_MODULE": "main:app",
-      "MONGODB_URI": "@MONGODB_URI"
+      "APP_MODULE": "main:app"
     }
   }
