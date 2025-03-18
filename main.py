@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from bson import ObjectId  # Import ObjectId from bson
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -16,6 +17,15 @@ app = FastAPI()
 # Create MongoDB client
 client = AsyncIOMotorClient(MONGO_URI) if MONGO_URI else None
 db = client[DB_NAME] if client else None
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://www.wsb-analysis.ca"],  # ✅ Allow your frontend
+    allow_credentials=True,
+    allow_methods=["*"],  # ✅ Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # ✅ Allow all headers
+)
 
 @app.middleware("http")
 async def db_middleware(request: Request, call_next):
