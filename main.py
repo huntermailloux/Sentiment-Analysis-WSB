@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
+from bson import ObjectId  # Import ObjectId from bson
 
 load_dotenv()
 
@@ -12,27 +13,35 @@ COLLECTION_NAME = "posts"
 
 app = FastAPI()
 
-# Explicitly create a global MongoDB client
+# Create MongoDB client
 client = AsyncIOMotorClient(MONGO_URI) if MONGO_URI else None
 db = client[DB_NAME] if client else None
 
 @app.middleware("http")
 async def db_middleware(request: Request, call_next):
     """Ensure that every request has access to the MongoDB database."""
-    if not db:
+    if db is None:  # ✅ Explicitly check if db is None
         raise HTTPException(status_code=500, detail="Database connection not initialized")
-    
+
     request.state.db = db  # Attach DB to the request state
     response = await call_next(request)
     return response
 
+def serialize_document(doc):
+    """Convert MongoDB document to JSON-serializable format."""
+    doc["_id"] = str(doc["_id"])  # Convert ObjectId to string
+    return doc
+
 @app.get("/")
 async def root(request: Request):
     try:
-        return {"uri": MONGO_URI}
         db = request.state.db
         cursor = db[COLLECTION_NAME].find({})
         posts = await cursor.to_list(length=None)
+
+        # Convert ObjectId to string in all documents
+        posts = [serialize_document(post) for post in posts]
+
         return {"posts": posts if posts else "No posts found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -42,10 +51,13 @@ async def get_ticker_posts(stock_ticker: str, request: Request):
     try:
         db = request.state.db
         cursor = db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
-        posts = await cursor.to_list(length=None)
+        posts = await cursor.to_list(length=None)  # ✅ Await the cursor
 
         if not posts:
             raise HTTPException(status_code=404, detail=f"No posts found for ticker {stock_ticker.upper()}")
+
+        # Convert ObjectId to string in all documents
+        posts = [serialize_document(post) for post in posts]
 
         return {"ticker": stock_ticker.upper(), "posts": posts}
     except Exception as e:

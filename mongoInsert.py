@@ -6,10 +6,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import asyncio
 from dotenv import load_dotenv
 import time
+import ast
 load_dotenv()
 
 # Load MongoDB connection string from environment variable
-MONGO_URI = os.getenv("MONGO_URI")
+MONGO_URI = os.getenv("MONGODB_URI")
 if not MONGO_URI:
     raise ValueError("❌ MONGO_URI is not set. Check your .env file or environment variables.")
 print(MONGO_URI);
@@ -39,6 +40,18 @@ def truncate_text(text: str) -> bool:
     # return text
     return True;
 
+# Function to safely convert ticker field into a list
+def process_ticker(ticker_data):
+    if isinstance(ticker_data, list):
+        return ticker_data  # Already a list, return as is
+    if isinstance(ticker_data, str):
+        try:
+            # Try parsing the string as a list safely
+            return ast.literal_eval(ticker_data) if ticker_data.startswith("[") and ticker_data.endswith("]") else [ticker_data]
+        except (SyntaxError, ValueError):
+            return [ticker_data]  # If parsing fails, wrap in a list
+    return []  # Default to an empty list if None or invalid
+
 # Function to analyze sentiment and insert into MongoDB
 async def process_posts():
     start_time = time.time()
@@ -55,7 +68,7 @@ async def process_posts():
                 # Perform sentiment analysis
                 sentiment_result = sentimentAnalyzer(post)[0]
                 sentiment_score = sentiment_map.get(sentiment_result["label"], 0)
-                ticker = str(row["symbols"])
+                ticker = process_ticker(row["symbols"])
 
                 document = {"ticker": ticker, "sentiment": sentiment_score, "post": post}
                 tasks.append(collection.insert_one(document))
