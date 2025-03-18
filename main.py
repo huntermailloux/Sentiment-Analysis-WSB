@@ -12,6 +12,8 @@ MONGO_URI = os.getenv("MONGODB_URI")
 DB_NAME = "sentiment-analysis"
 COLLECTION_NAME = "posts"
 
+print(f"🔍 MONGO_URI Loaded: {MONGO_URI}")  # Debug: Check if MongoDB URI is loaded
+
 app = FastAPI()
 
 # ✅ Add CORS middleware
@@ -23,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ MongoDB connection instance (initialized in lifespan events)
+# ✅ MongoDB connection instance
 client = None
 db = None
 
@@ -31,9 +33,13 @@ db = None
 async def startup_db_client():
     """Initialize MongoDB connection when FastAPI starts."""
     global client, db
-    client = AsyncIOMotorClient(MONGO_URI)
-    db = client[DB_NAME]
-    print("🚀 Connected to MongoDB")  # Debugging log
+    try:
+        print("🚀 Connecting to MongoDB...")  # Debugging log
+        client = AsyncIOMotorClient(MONGO_URI)
+        db = client[DB_NAME]
+        print("✅ MongoDB Connected!")
+    except Exception as e:
+        print(f"❌ MongoDB Connection Error: {e}")  # Debugging log
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
@@ -45,7 +51,9 @@ async def shutdown_db_client():
 
 def get_db():
     """Dependency to get the database instance."""
+    global db
     if db is None:
+        print("❌ Database connection is not initialized!")  # Debugging log
         raise HTTPException(status_code=500, detail="Database connection not initialized")
     return db
 
@@ -57,25 +65,32 @@ def serialize_document(doc):
 @app.get("/")
 async def root(db=Depends(get_db)):
     try:
+        print("📢 Fetching all posts...")  # Debugging log
         cursor = db[COLLECTION_NAME].find({})
         posts = await cursor.to_list(length=None)
         posts = [serialize_document(post) for post in posts]
+        print(f"✅ Retrieved {len(posts)} posts.")  # Debugging log
         return {"posts": posts if posts else "No posts found"}
     except Exception as e:
+        print(f"❌ Error fetching posts: {e}")  # Debugging log
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/ticker/{stock_ticker}")
 async def get_ticker_posts(stock_ticker: str, db=Depends(get_db)):
     try:
+        print(f"📢 Fetching posts for ticker: {stock_ticker.upper()}")  # Debugging log
         cursor = db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
         posts = await cursor.to_list(length=None)
         posts = [serialize_document(post) for post in posts]
+        print(f"✅ Retrieved {len(posts)} posts for {stock_ticker.upper()}")  # Debugging log
         return {"ticker": stock_ticker.upper(), "posts": posts if posts else "No posts found"}
     except Exception as e:
+        print(f"❌ Error fetching ticker posts: {e}")  # Debugging log
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
 
 
 # import os
