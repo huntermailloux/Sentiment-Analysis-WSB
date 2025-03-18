@@ -2,24 +2,32 @@ import os
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGODB_URI")
 DB_NAME = "sentiment-analysis"
 COLLECTION_NAME = "posts"
 
-client = AsyncIOMotorClient(MONGO_URI)
-db = client[DB_NAME]
-collection = db[COLLECTION_NAME]
+# Lifespan for properly handling DB connection
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Connecting to MongoDB...")
+    app.mongodb_client = AsyncIOMotorClient(MONGO_URI)
+    app.db = app.mongodb_client[DB_NAME]
+    yield
+    print("Closing MongoDB connection...")
+    app.mongodb_client.close()
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def root():
     try:
-        cursor = collection.find({})  # Find all documents
-        posts = await cursor.to_list(length=None)  # Convert cursor to list
+        cursor = app.db[COLLECTION_NAME].find({})  
+        posts = await cursor.to_list(length=None)  
 
         if not posts:
             return {"message": "No posts found"}
@@ -32,10 +40,9 @@ async def root():
 @app.get("/ticker/{stock_ticker}")
 async def get_ticker_posts(stock_ticker: str):
     try:
-        # Fetch posts where "ticker" matches the stock_ticker from the URL
-        cursor = collection.find({"ticker": {"$in": [stock_ticker.upper()]}})  # Ensure case insensitivity
-        posts = await cursor.to_list(length=None)  # Convert cursor to list
-        
+        cursor = app.db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
+        posts = await cursor.to_list(length=None)
+
         if not posts:
             raise HTTPException(status_code=404, detail=f"No posts found for ticker {stock_ticker.upper()}")
 
