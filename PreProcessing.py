@@ -54,7 +54,7 @@ def preProcessText(s):
     s = "".join(char for char in s 
                 if char not in string.punctuation)  # Remove punctuation from the posts
     s = " ".join(word for word in s.split() 
-                 if word not in stopWords) # Removes stop words
+                if word not in stopWords) # Removes stop words
     s = imgemoteRegex.sub("", s) 
     
     return s # Returns the processed post.
@@ -80,11 +80,12 @@ data["symbols"] = data["post"].apply(extractSymbols)
 
 # Keeps posts that mention at least one valid ticker (removes the other ones)
 data = data[data["symbols"].str.len() > 0]
-data = data[~data["post"].apply(checkNumbers)] # Calls the check numbers functions.
+data = data[~data["post"].apply(checkNumbers)] # Calls the check numbers function.
 
 # Creates columns for our processed csv.
-columns = ["date", "post", "symbols"]
+columns = ["date", "body", "post", "symbols"]  # Added 'body' to keep the original post
 data[columns].to_csv("processedWSBposts.csv", index=False, encoding="utf-8-sig") # Save to csv
 
-print(f"Data saved to processedWSBposts.csv")
+print(f"Data saved to processedWSBposts.csv with original posts included")
+
 

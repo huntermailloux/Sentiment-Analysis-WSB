@@ -12,7 +12,6 @@ BRK-B,Berkshire Hathaway Inc.
 WMT,Walmart Inc.
 LLY,Eli Lilly and Company
 JPM,JP Morgan Chase & Co.
-V,Visa Inc.
 MA,Mastercard Incorporated
 ORCL,Oracle Corporation
 XOM,Exxon Mobil Corporation
@@ -55,7 +54,6 @@ QCOM,QUALCOMM Incorporated
 VZ,Verizon Communications Inc.
 BKNG,Booking Holdings Inc. Common St
 DHR,Danaher Corporation
-T,AT&T Inc.
 BLK,"BlackRock, Inc."
 RTX,RTX Corporation
 SPGI,S&P Global Inc.
@@ -193,11 +191,9 @@ VST,Vistra Corp.
 URI,"United Rentals, Inc."
 MSCI,MSCI Inc.
 LULU,lululemon athletica inc.
-O,Realty Income Corporation
 PSX,Phillips 66
 AIG,"American International Group, I"
 FANG,"Diamondback Energy, Inc."
-D,"Dominion Energy, Inc."
 HWM,Howmet Aerospace Inc.
 DHI,"D.R. Horton, Inc."
 KR,Kroger Company 
@@ -229,13 +225,11 @@ HES,Hess Corporation
 CCI,Crown Castle Inc.
 DAL,"Delta Air Lines, Inc."
 CTSH,Cognizant Technology Solutions 
-F,Ford Motor Company
 VRSK,"Verisk Analytics, Inc."
 EA,Electronic Arts Inc.
 ODFL,"Old Dominion Freight Line, Inc."
 XEL,Xcel Energy Inc.
 TRGP,"Targa Resources, Inc."
-A,"Agilent Technologies, Inc."
 LVS,Las Vegas Sands Corp.
 SYY,Sysco Corporation
 VLO,Valero Energy Corporation
@@ -488,7 +482,6 @@ SPY,SPDR S&P 500 ETF Trust
 EU,enCore Energy Corp
 MSTR,MicroStrategy Inc
 QQQ,Invesco QQQ ETF
-AM,Antero Midstream
 VOO,Vanguard S&P 500 ETF
 RDDT,Reddit Inc.
 IPA,ImmunoPrecise Antibodies
