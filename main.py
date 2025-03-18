@@ -45,6 +45,7 @@ def serialize_document(doc):
 
 @app.get("/")
 async def root(request: Request):
+    time.sleep(0.1)
     try:
         db = request.state.db
         cursor = db[COLLECTION_NAME].find({})
@@ -59,6 +60,7 @@ async def root(request: Request):
 
 @app.get("/ticker/{stock_ticker}")
 async def get_ticker_posts(stock_ticker: str, request: Request):
+    time.sleep(0.1)
     try:
         db = request.state.db
         cursor = db[COLLECTION_NAME].find({"ticker": {"$in": [stock_ticker.upper()]}})
@@ -73,4 +75,3 @@ async def get_ticker_posts(stock_ticker: str, request: Request):
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-    time.sleep(0.1)
