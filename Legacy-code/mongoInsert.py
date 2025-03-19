@@ -3,24 +3,20 @@ import pandas as pd
 import ast
 import time
 import asyncio
-from tqdm import tqdm  # Progress bar for tracking
+from tqdm import tqdm
 from dotenv import load_dotenv
 from transformers import pipeline, AutoTokenizer
 from motor.motor_asyncio import AsyncIOMotorClient
 
 # Load environment variables
 load_dotenv()
-
-# Load MongoDB connection string from environment variable
 MONGO_URI = os.getenv("MONGODB_URI")
 if not MONGO_URI:
     raise ValueError("❌ MONGO_URI is not set. Check your .env file or environment variables.")
 print(f"✅ Connected to MongoDB at {MONGO_URI}")
 
 DB_NAME = "sentiment-analysis"
-COLLECTION_NAME = "posts"
-
-# Connect to MongoDB
+COLLECTION_NAME = "postsV2"
 client = AsyncIOMotorClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db[COLLECTION_NAME]
@@ -46,18 +42,18 @@ def filter_valid_posts(df):
 # Function to safely convert ticker field into a list
 def process_ticker(ticker_data):
     if isinstance(ticker_data, list):
-        return ticker_data  # Already a list
+        return ticker_data
     if isinstance(ticker_data, str):
         try:
             return ast.literal_eval(ticker_data) if ticker_data.startswith("[") and ticker_data.endswith("]") else [ticker_data]
         except (SyntaxError, ValueError):
-            return [ticker_data]  # If parsing fails, wrap in a list
-    return []  # Default to an empty list if None or invalid
+            return [ticker_data]
+    return []
 
 # Function to analyze sentiment in batches
 async def analyze_sentiment_batch(posts):
     print("⚡ Running sentiment analysis...")
-    results = sentimentAnalyzer(posts)  # Returns list of sentiment results
+    results = sentimentAnalyzer(posts)
     print("✅ Sentiment analysis completed!")
     return results
 
@@ -79,15 +75,23 @@ async def process_posts():
         df["ticker"] = df["symbols"].apply(process_ticker)
 
         posts = df["post"].astype(str).tolist()
-
-        # Run sentiment analysis asynchronously in batches
         sentiment_results = await analyze_sentiment_batch(posts)
 
         # Prepare documents for bulk insertion
         print("🛠️ Preparing documents for MongoDB...")
         documents = [
-            {"ticker": ticker, "sentiment": sentiment_map.get(result["label"], 0), "post": post}
-            for ticker, post, result in tqdm(zip(df["ticker"], posts, sentiment_results), total=len(posts), desc="🔄 Processing Posts")
+            {
+                "ticker": ticker,
+                "sentiment": sentiment_map.get(result["label"], 0),
+                "date": date,
+                "preprocessedPost": post,
+                "originalPost": body
+            }
+            for ticker, date, post, body, result in tqdm(
+                zip(df["ticker"], df["date"], df["post"], df["body"], sentiment_results),
+                total=len(posts),
+                desc="🔄 Processing Posts"
+            )
         ]
         print("✅ Documents prepared.")
 
@@ -97,14 +101,12 @@ async def process_posts():
             await collection.insert_many(documents)
             print(f"✅ {len(documents)} posts stored successfully in MongoDB!")
 
-        # Print elapsed time
         elapsed_time = (time.time() - start_time) / 60
         print(f"⏱️ Total elapsed time: {elapsed_time:.2f} minutes")
 
     except Exception as e:
         print(f"❌ Error processing CSV: {e}")
 
-# Run the async function
 if __name__ == "__main__":
     print("🚀 Starting script...")
     asyncio.run(process_posts())
