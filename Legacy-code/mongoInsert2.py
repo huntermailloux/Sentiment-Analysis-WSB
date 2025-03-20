@@ -3,9 +3,11 @@ import pandas as pd
 import ast
 import time
 import asyncio
+import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 from dotenv import load_dotenv
-from transformers import pipeline, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from motor.motor_asyncio import AsyncIOMotorClient
 
 # Load environment variables
@@ -24,8 +26,9 @@ collection = db[COLLECTION_NAME]
 # Initialize sentiment analysis pipeline
 MODEL_NAME = "yiyanghkust/finbert-tone"
 print("⏳ Loading sentiment analysis model...")
-sentimentAnalyzer = pipeline("sentiment-analysis", model=MODEL_NAME)
+#sentimentAnalyzer = pipeline("sentiment-analysis", model=MODEL_NAME)
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 print("✅ Model loaded successfully!")
 
 CSV_FILE = "processedWSBposts.csv"
@@ -49,11 +52,21 @@ def process_ticker(ticker_data):
     return []
 
 async def analyze_sentiment(post):
-    return sentimentAnalyzer(post)[0]
+    inputs = tokenizer(post, return_tensors="pt", truncation=True, padding=True)
+    with torch.no_grad():
+        logits = model(**inputs).logits
+
+    probs = F.softmax(logits, dim=1)
+    labels = ["neutral", "positive", "negative"]
+    predictedClass = torch.argmax(probs, dim=1).item()
+    predictedSentiment = labels[predictedClass]
+    predictedConfidence = probs[0, predictedClass].item()
+
+    return {"label": predictedSentiment, "confidence": predictedConfidence}
 
 async def process_posts():
     start_time = time.time()
-    sentiment_map = {"Positive": 1, "Neutral": 0, "Negative": -1}
+    sentiment_map = {"positive": 1, "neutral": 0, "negative": -1}
     
     try:
         print("📂 Loading CSV file...")
@@ -70,6 +83,7 @@ async def process_posts():
             document = {
                 "ticker": row["ticker"],
                 "sentiment": sentiment_map.get(sentiment_result["label"], 0),
+                "confidence": sentiment_result["confidence"],
                 "date": row["date"],
                 "preprocessedPost": row["post"],
                 "originalPost": row["body"]
